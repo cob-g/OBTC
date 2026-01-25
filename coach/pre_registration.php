@@ -165,15 +165,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($step === 3) {
             $consent = (string) ($_POST['consent'] ?? '');
             $category = trim((string) ($_POST['bmi_category'] ?? ''));
+            $coachBmiRaw = trim((string) ($_POST['bmi'] ?? ''));
 
-            $bmi = bmi_from_imperial(
+            $systemBmi = bmi_from_imperial(
                 $_SESSION['pre_registration']['start_weight_lbs'] ?? 0,
                 $_SESSION['pre_registration']['height_ft'] ?? 0,
                 $_SESSION['pre_registration']['height_in'] ?? 0
             );
 
-            if ($bmi === null) {
+            if ($systemBmi === null) {
                 $errors[] = 'BMI could not be calculated. Please check height and weight.';
+            }
+
+            if ($coachBmiRaw === '') {
+                $errors[] = 'BMI value is required.';
+            }
+
+            $coachBmi = null;
+            if ($coachBmiRaw !== '') {
+                // Require exactly two decimal places, no more, no less
+                if (!preg_match('/^\d+(\.\d{2})$/', $coachBmiRaw)) {
+                    $errors[] = 'BMI must be entered with exactly two decimal places (e.g., 23.45).';
+                } elseif (!is_numeric($coachBmiRaw)) {
+                    $errors[] = 'BMI must be a valid number.';
+                } else {
+                    $coachBmi = (float) $coachBmiRaw;
+                    if ($coachBmi <= 0 || $coachBmi > 100) {
+                        $errors[] = 'BMI must be a reasonable positive value.';
+                    }
+                }
             }
 
             if ($category === '') {
@@ -186,8 +206,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $errors[] = 'Consent confirmation is required.';
             }
 
+            if ($systemBmi !== null && $coachBmi !== null && !$errors) {
+                $expectedCategory = bmi_category_suggest($systemBmi);
+
+                // Compare BMI values exactly at two decimal places (no tolerance), truncate raw system BMI
+                $systemBmiTruncated = floor((float) $systemBmi * 100) / 100; // truncate to 2 decimals
+                $systemBmiFormatted = number_format($systemBmiTruncated, 2, '.', '');
+                $coachBmiFormatted = $coachBmiRaw; // already validated to be two decimals
+                $bmiMatches = ($coachBmiFormatted === $systemBmiFormatted);
+
+                if (!$bmiMatches) {
+                    $errors[] = "It looks like the BMI value doesn't match the client's height and weight. Please double-check your calculation and try again.";
+                } elseif ($expectedCategory !== null && $category !== $expectedCategory) {
+                    $errors[] = "The BMI value is correct, but the selected category doesn't match it. Please review the BMI category before continuing.";
+                }
+            }
+
             if (!$errors) {
-                $_SESSION['pre_registration']['bmi'] = number_format((float) $bmi, 2, '.', '');
+                $_SESSION['pre_registration']['bmi'] = number_format((float) $coachBmi, 2, '.', '');
                 $_SESSION['pre_registration']['bmi_category'] = $category;
                 $_SESSION['pre_registration']['consent_confirmed'] = true;
 
@@ -456,9 +492,9 @@ require __DIR__ . '/../partials/nav.php';
                         <div class="mt-3 overflow-hidden rounded-xl bg-white">
                             <div class="aspect-[3/4] w-full bg-gradient-to-b from-orange-50 to-white flex items-center justify-center">
                                 <?php if (!empty($data['front_photo_path']) && is_file((string) $data['front_photo_path'])): ?>
-                                    <img src="<?= h(url('/media/pre_registration_photo.php?key=front')) ?>" alt="Front upload" class="h-full w-full object-cover" />
+                                    <img id="front_preview" src="<?= h(url('/media/pre_registration_photo.php?key=front')) ?>" alt="Front upload" class="h-full w-full object-cover" />
                                 <?php else: ?>
-                                    <img src="<?= h(url('/media/pre_registration_reference.php?key=front')) ?>" alt="Front example" class="h-full w-full object-contain bg-white" />
+                                    <img id="front_preview" src="<?= h(url('/media/pre_registration_reference.php?key=front')) ?>" alt="Front example" class="h-full w-full object-contain bg-white" />
                                 <?php endif; ?>
                             </div>
                         </div>
@@ -476,9 +512,9 @@ require __DIR__ . '/../partials/nav.php';
                         <div class="mt-3 overflow-hidden rounded-xl bg-white">
                             <div class="aspect-[3/4] w-full bg-gradient-to-b from-orange-50 to-white flex items-center justify-center">
                                 <?php if (!empty($data['side_photo_path']) && is_file((string) $data['side_photo_path'])): ?>
-                                    <img src="<?= h(url('/media/pre_registration_photo.php?key=side')) ?>" alt="Side upload" class="h-full w-full object-cover" />
+                                    <img id="side_preview" src="<?= h(url('/media/pre_registration_photo.php?key=side')) ?>" alt="Side upload" class="h-full w-full object-cover" />
                                 <?php else: ?>
-                                    <img src="<?= h(url('/media/pre_registration_reference.php?key=side')) ?>" alt="Side example" class="h-full w-full object-contain bg-white" />
+                                    <img id="side_preview" src="<?= h(url('/media/pre_registration_reference.php?key=side')) ?>" alt="Side example" class="h-full w-full object-contain bg-white" />
                                 <?php endif; ?>
                             </div>
                         </div>
@@ -488,6 +524,31 @@ require __DIR__ . '/../partials/nav.php';
                         </div>
                     </div>
                 </div>
+
+                <script>
+                    (function () {
+                        var frontInput = document.querySelector('input[name="front_photo"]');
+                        var sideInput = document.querySelector('input[name="side_photo"]');
+                        var frontImg = document.getElementById('front_preview');
+                        var sideImg = document.getElementById('side_preview');
+
+                        function bindPreview(input, img) {
+                            if (!input || !img) return;
+                            input.addEventListener('change', function () {
+                                if (!input.files || !input.files[0]) return;
+                                var file = input.files[0];
+                                var url = URL.createObjectURL(file);
+                                img.src = url;
+                                img.classList.remove('object-cover');
+                                img.classList.add('object-contain');
+                                img.classList.add('bg-white');
+                            });
+                        }
+
+                        bindPreview(frontInput, frontImg);
+                        bindPreview(sideInput, sideImg);
+                    })();
+                </script>
 
                 <div class="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:justify-between">
                     <a href="<?= h(url('/coach/pre_registration.php?step=1')) ?>" class="inline-flex items-center justify-center rounded-xl border border-orange-100 bg-white px-4 py-3 text-sm font-extrabold text-zinc-700 hover:bg-orange-50">
@@ -508,30 +569,21 @@ require __DIR__ . '/../partials/nav.php';
 
     <?php if ($step === 3): ?>
         <?php
-            $bmi = bmi_from_imperial(
-                $data['start_weight_lbs'] ?? 0,
-                $data['height_ft'] ?? 0,
-                $data['height_in'] ?? 0
-            );
-            $suggested = bmi_category_suggest($bmi);
-            $selected = (string) ($data['bmi_category'] ?? ($suggested ?? ''));
+            $selected = (string) ($data['bmi_category'] ?? '');
+            $bmiValue = (string) ($data['bmi'] ?? '');
         ?>
         <div class="rounded-2xl border border-orange-100 bg-white p-6">
             <h2 class="text-xl font-extrabold tracking-tight">BMI & Consent</h2>
-            <p class="mt-1 text-sm text-zinc-600">BMI is calculated by the system. Coach confirms the category and records consent.</p>
-
-            <div class="mt-5 rounded-2xl border border-orange-100 bg-orange-50 p-4">
-                <div class="text-sm font-semibold text-zinc-700">Calculated BMI</div>
-                <div class="mt-1 text-3xl font-extrabold text-molten">
-                    <?= $bmi === null ? '-' : h(number_format((float) $bmi, 2, '.', '')) ?>
-                </div>
-                <?php if ($suggested): ?>
-                    <div class="mt-1 text-sm text-zinc-600">Suggested category: <span class="font-extrabold text-zinc-800"><?= h($suggested) ?></span></div>
-                <?php endif; ?>
-            </div>
+            <p class="mt-1 text-sm text-zinc-600">Coach manually calculates BMI, enters the value, selects the appropriate category, and records consent.</p>
 
             <form method="post" class="mt-6 space-y-5" novalidate>
                 <?= csrf_field() ?>
+
+                <div>
+                    <label class="mb-1 block text-sm font-semibold" for="bmi">BMI (Coach-entered)</label>
+                    <input id="bmi" name="bmi" type="number" min="5" max="100" step="0.01" required value="<?= h($bmiValue) ?>" class="w-full rounded-xl border border-orange-100 bg-white px-4 py-3 text-sm outline-none ring-molten/20 focus:border-molten focus:ring-4" />
+                    <p class="mt-1 text-xs text-zinc-600">Calculate BMI manually based on the clients height and weight, then enter the value here.</p>
+                </div>
 
                 <div>
                     <label class="mb-1 block text-sm font-semibold" for="bmi_category">BMI Category (Coach)</label>

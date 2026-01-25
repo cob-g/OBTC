@@ -8,11 +8,19 @@ if ($key !== 'front' && $key !== 'side') {
     exit;
 }
 
-$base = project_root_path('storage/uploads/references');
-$filename = $key === 'front' ? 'front_reference.png' : 'side_reference.png';
-$path = $base . DIRECTORY_SEPARATOR . $filename;
+$baseDir = realpath(__DIR__ . '/../storage/uploads/references');
+if ($baseDir === false) {
+    http_response_code(500);
+    exit;
+}
 
-if (!is_file($path)) {
+if ($key === 'front') {
+    $path = $baseDir . DIRECTORY_SEPARATOR . 'front_reference.png';
+} else {
+    $path = $baseDir . DIRECTORY_SEPARATOR . 'side_reference.png';
+}
+
+if ($path === '' || !is_file($path)) {
     http_response_code(404);
     exit;
 }
@@ -29,3 +37,4 @@ header('Content-Length: ' . filesize($path));
 header('Cache-Control: no-store, max-age=0');
 
 readfile($path);
+

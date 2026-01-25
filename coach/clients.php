@@ -3,14 +3,38 @@ require __DIR__ . '/../app/bootstrap.php';
 require_role('coach');
 
 $user = auth_user();
+$page = (int) ($_GET['page'] ?? 1);
+if ($page < 1) {
+    $page = 1;
+}
+$perPage = 10;
 $clients = [];
+$totalClients = 0;
+$totalPages = 1;
 
 try {
+    $countStmt = db()->prepare('SELECT COUNT(*) FROM clients WHERE coach_user_id = ?');
+    $countStmt->execute([(int) $user['id']]);
+    $totalClients = (int) $countStmt->fetchColumn();
+
+    $totalPages = $perPage > 0 ? (int) ceil($totalClients / $perPage) : 1;
+    if ($totalPages < 1) {
+        $totalPages = 1;
+    }
+    if ($page > $totalPages) {
+        $page = $totalPages;
+    }
+
+    $offset = ($page - 1) * $perPage;
+
     $select = db_has_column('clients', 'full_name')
-        ? 'SELECT id, full_name, gender, age, height_ft, height_in, start_weight_lbs, waistline_in, bmi, bmi_category, registered_at FROM clients WHERE coach_user_id = ? ORDER BY registered_at DESC, id DESC'
-        : 'SELECT id, gender, age, height_ft, height_in, start_weight_lbs, waistline_in, bmi, bmi_category, registered_at FROM clients WHERE coach_user_id = ? ORDER BY registered_at DESC, id DESC';
+        ? 'SELECT id, full_name, gender, age, height_ft, height_in, start_weight_lbs, waistline_in, bmi, bmi_category, registered_at FROM clients WHERE coach_user_id = ? ORDER BY registered_at DESC, id DESC LIMIT ? OFFSET ?'
+        : 'SELECT id, gender, age, height_ft, height_in, start_weight_lbs, waistline_in, bmi, bmi_category, registered_at FROM clients WHERE coach_user_id = ? ORDER BY registered_at DESC, id DESC LIMIT ? OFFSET ?';
     $stmt = db()->prepare($select);
-    $stmt->execute([(int) $user['id']]);
+    $stmt->bindValue(1, (int) $user['id'], PDO::PARAM_INT);
+    $stmt->bindValue(2, (int) $perPage, PDO::PARAM_INT);
+    $stmt->bindValue(3, (int) $offset, PDO::PARAM_INT);
+    $stmt->execute();
     $clients = $stmt->fetchAll();
 } catch (Throwable $e) {
     $clients = [];
@@ -79,6 +103,20 @@ require __DIR__ . '/../partials/nav.php';
                 </tbody>
             </table>
         </div>
+
+        <?php if ($totalPages > 1): ?>
+            <div class="mt-5 flex items-center justify-between gap-3 text-sm">
+                <div class="font-semibold text-zinc-700">Page <?= h((string) $page) ?> of <?= h((string) $totalPages) ?></div>
+                <div class="flex items-center gap-2">
+                    <?php if ($page > 1): ?>
+                        <a class="rounded-xl border border-orange-100 bg-white px-3 py-2 text-xs font-extrabold text-zinc-700 hover:bg-orange-50" href="<?= h(url('/coach/clients.php?page=' . (int) ($page - 1))) ?>">Prev</a>
+                    <?php endif; ?>
+                    <?php if ($page < $totalPages): ?>
+                        <a class="rounded-xl border border-orange-100 bg-white px-3 py-2 text-xs font-extrabold text-zinc-700 hover:bg-orange-50" href="<?= h(url('/coach/clients.php?page=' . (int) ($page + 1))) ?>">Next</a>
+                    <?php endif; ?>
+                </div>
+            </div>
+        <?php endif; ?>
     </div>
 </main>
 
