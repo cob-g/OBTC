@@ -9,6 +9,7 @@ if ($role === 'coach') {
         ['Dashboard', url('/coach/dashboard.php')],
         ['Pre-Registration', url('/coach/pre_registration.php')],
         ['Challenge', url('/coach/challenge.php')],
+        ['Coach Challenge', url('/coach/coach_challenge.php')],
         ['Client', url('/coach/clients.php')],
         ['Profile', url('/coach/profile.php')],
     ];
@@ -18,6 +19,8 @@ if ($role === 'admin') {
     $nav = [
         ['Overview', url('/admin/overview.php')],
         ['Challenges', url('/admin/challenges.php')],
+        ['Coach Challenges', url('/admin/coach_challenges.php')],
+        ['Coach Leaderboard', url('/admin/coach_leaderboard.php')],
         ['Leaderboard', url('/admin/leaderboard.php')],
         ['Clients', url('/admin/clients.php')],
         ['Data Backup', url('/admin/backup.php')],

@@ -339,6 +339,8 @@ require __DIR__ . '/../partials/nav.php';
                 <div><span class="font-semibold">Age:</span> <?= h((string) $client['age']) ?></div>
                 <div><span class="font-semibold">Height:</span> <?= h((string) $client['height_ft']) ?>ft <?= h((string) $client['height_in']) ?>in</div>
                 <div><span class="font-semibold">Initial Weight:</span> <?= $startWeight > 0 ? h((string) $client['start_weight_lbs']) : '-' ?><?= $startWeight > 0 ? ' lbs' : '' ?></div>
+                <?php $waistline = isset($client['waistline_in']) ? (float) $client['waistline_in'] : 0.0; ?>
+                <div><span class="font-semibold">Waistline:</span> <?= $waistline > 0 ? h((string) $client['waistline_in']) . ' in' : '-' ?></div>
                 <div><span class="font-semibold">Initial BMI:</span> <?= $hasBaselineMetrics ? h((string) $client['bmi']) : '-' ?><?= $hasBaselineMetrics ? (' (' . h((string) $client['bmi_category']) . ')') : '' ?></div>
             </div>
 

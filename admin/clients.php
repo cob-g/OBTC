@@ -5,10 +5,10 @@ require_role('admin');
 $clients = [];
 try {
     if (db_has_column('clients', 'full_name')) {
-        $stmt = db()->query('SELECT c.id, c.full_name, c.gender, c.age, c.height_ft, c.height_in, c.start_weight_lbs, c.bmi, c.bmi_category, c.registered_at, u.name AS coach_name, u.email AS coach_email FROM clients c INNER JOIN users u ON u.id = c.coach_user_id ORDER BY c.registered_at DESC, c.id DESC');
+        $stmt = db()->query('SELECT c.id, c.full_name, c.gender, c.age, c.height_ft, c.height_in, c.start_weight_lbs, c.waistline_in, c.bmi, c.bmi_category, c.registered_at, u.name AS coach_name, u.email AS coach_email FROM clients c INNER JOIN users u ON u.id = c.coach_user_id ORDER BY c.registered_at DESC, c.id DESC');
         $clients = $stmt->fetchAll();
     } else {
-        $stmt = db()->query('SELECT c.id, c.gender, c.age, c.height_ft, c.height_in, c.start_weight_lbs, c.bmi, c.bmi_category, c.registered_at, u.name AS coach_name, u.email AS coach_email FROM clients c INNER JOIN users u ON u.id = c.coach_user_id ORDER BY c.registered_at DESC, c.id DESC');
+        $stmt = db()->query('SELECT c.id, c.gender, c.age, c.height_ft, c.height_in, c.start_weight_lbs, c.waistline_in, c.bmi, c.bmi_category, c.registered_at, u.name AS coach_name, u.email AS coach_email FROM clients c INNER JOIN users u ON u.id = c.coach_user_id ORDER BY c.registered_at DESC, c.id DESC');
         $clients = $stmt->fetchAll();
     }
 } catch (Throwable $e) {
@@ -37,6 +37,7 @@ require __DIR__ . '/../partials/nav.php';
                         <th class="py-3 pr-4">Client</th>
                         <th class="py-3 pr-4">Coach</th>
                         <th class="py-3 pr-4">Registered</th>
+                        <th class="py-3 pr-4">Waistline</th>
                         <th class="py-3 pr-4">BMI</th>
                         <th class="py-3 pr-0">Category</th>
                     </tr>
@@ -44,7 +45,7 @@ require __DIR__ . '/../partials/nav.php';
                 <tbody>
                     <?php if (!$clients): ?>
                         <tr>
-                            <td colspan="5" class="py-6 text-zinc-600">No clients yet.</td>
+                            <td colspan="6" class="py-6 text-zinc-600">No clients yet.</td>
                         </tr>
                     <?php endif; ?>
                     <?php foreach ($clients as $c): ?>
@@ -55,6 +56,8 @@ require __DIR__ . '/../partials/nav.php';
                             </td>
                             <td class="py-4 pr-4 text-zinc-700"><?= h((string) $c['coach_name']) ?> <span class="text-zinc-500">(<?= h((string) $c['coach_email']) ?>)</span></td>
                             <td class="py-4 pr-4 text-zinc-700"><?= h((string) $c['registered_at']) ?></td>
+                            <?php $wst = isset($c['waistline_in']) ? (float) $c['waistline_in'] : 0.0; ?>
+                            <td class="py-4 pr-4 text-zinc-700"><?= $wst > 0 ? h((string) $c['waistline_in']) . ' in' : '-' ?></td>
                             <td class="py-4 pr-4 font-extrabold text-molten"><?= h((string) $c['bmi']) ?></td>
                             <td class="py-4 pr-0 text-zinc-800"><?= h((string) $c['bmi_category']) ?></td>
                         </tr>

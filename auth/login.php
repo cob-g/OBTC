@@ -22,7 +22,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($ok) {
                 redirect(url('/index.php'));
             }
-            $error = 'Invalid credentials.';
+            $error = auth_last_error() === 'inactive'
+                ? 'Your account has been deactivated. Please contact the admin.'
+                : 'Invalid credentials.';
         }
     }
 }

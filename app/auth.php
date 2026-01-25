@@ -6,11 +6,17 @@ function auth_user()
         return null;
     }
 
-    $stmt = db()->prepare('SELECT id, name, email, role FROM users WHERE id = ? LIMIT 1');
+    $select = 'SELECT id, name, email, role' . (db_has_column('users', 'is_active') ? ', is_active' : '') . ' FROM users WHERE id = ? LIMIT 1';
+    $stmt = db()->prepare($select);
     $stmt->execute([$_SESSION['user_id']]);
     $user = $stmt->fetch();
 
     return $user ?: null;
+}
+
+function auth_last_error()
+{
+    return isset($GLOBALS['auth_last_error']) ? (string) $GLOBALS['auth_last_error'] : '';
 }
 
 function auth_check()
@@ -45,15 +51,27 @@ function require_role($roles)
 
 function auth_login($email, $password)
 {
-    $stmt = db()->prepare('SELECT id, name, email, role, password_hash FROM users WHERE email = ? LIMIT 1');
+    $GLOBALS['auth_last_error'] = '';
+    $select = 'SELECT id, name, email, role, password_hash' . (db_has_column('users', 'is_active') ? ', is_active' : '') . ' FROM users WHERE email = ? LIMIT 1';
+    $stmt = db()->prepare($select);
     $stmt->execute([(string) $email]);
     $user = $stmt->fetch();
 
     if (!$user) {
+        $GLOBALS['auth_last_error'] = 'invalid';
         return false;
     }
 
+    if (db_has_column('users', 'is_active')) {
+        $isActive = isset($user['is_active']) ? (int) $user['is_active'] : 1;
+        if ($isActive !== 1) {
+            $GLOBALS['auth_last_error'] = 'inactive';
+            return false;
+        }
+    }
+
     if (!password_verify((string) $password, (string) $user['password_hash'])) {
+        $GLOBALS['auth_last_error'] = 'invalid';
         return false;
     }
 
