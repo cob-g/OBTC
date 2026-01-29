@@ -2,6 +2,23 @@
 require __DIR__ . '/../app/bootstrap.php';
 require_role('admin');
 
+function truncate_decimals($value, $decimals)
+{
+    $decimals = max(0, (int) $decimals);
+    $factor = pow(10, $decimals);
+
+    if ($factor <= 0) {
+        return (float) $value;
+    }
+
+    $v = (float) $value;
+    if ($v >= 0) {
+        return floor($v * $factor) / $factor;
+    }
+
+    return ceil($v * $factor) / $factor;
+}
+
 function ensure_coach_challenge_tables()
 {
     db()->exec(
@@ -111,6 +128,9 @@ if ($challenge) {
         $stmt = db()->prepare($sql);
         $stmt->execute([(int) $challenge['id'], (int) $challenge['id']]);
         $rows = $stmt->fetchAll();
+        foreach ($rows as $k => $r) {
+            $rows[$k]['loss_pct'] = truncate_decimals((float) ($r['loss_pct'] ?? 0), 2);
+        }
     } catch (Throwable $e) {
         $rows = [];
     }

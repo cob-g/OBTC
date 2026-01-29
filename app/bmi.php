@@ -38,7 +38,7 @@ function bmi_category_suggest($bmi)
         return 'Normal';
     }
 
-    return 'Underweight';
+    return 'Normal';
 }
 
 function bmi_category_options()

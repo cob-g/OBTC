@@ -1,6 +1,6 @@
 <?php
 require __DIR__ . '/../app/bootstrap.php';
-require_role('coach');
+require_role(['coach', 'admin']);
 
 $user = auth_user();
 $clientId = (int) ($_GET['id'] ?? 0);
@@ -34,7 +34,7 @@ try {
     $client = null;
 }
 
-if (!$client || (int) $client['coach_user_id'] !== (int) $user['id']) {
+if (!$client || ($user['role'] === 'coach' && (int) $client['coach_user_id'] !== (int) $user['id'])) {
     http_response_code(404);
     exit;
 }

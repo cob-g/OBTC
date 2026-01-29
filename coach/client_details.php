@@ -1,8 +1,9 @@
 <?php
 require __DIR__ . '/../app/bootstrap.php';
-require_role('coach');
+require_role(['coach', 'admin']);
 
 $user = auth_user();
+$isAdmin = $user && (string) $user['role'] === 'admin';
 $clientId = (int) ($_GET['id'] ?? 0);
 if ($clientId <= 0) {
     http_response_code(404);
@@ -38,13 +39,15 @@ try {
     $client = null;
 }
 
-if (!$client || (int) $client['coach_user_id'] !== (int) $user['id']) {
+if (!$client || (!$isAdmin && (int) $client['coach_user_id'] !== (int) $user['id'])) {
     http_response_code(404);
     exit;
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (!csrf_verify()) {
+    if ($isAdmin) {
+        $errors[] = 'Admins can view client details here, but cannot modify client data on this page.';
+    } elseif (!csrf_verify()) {
         $errors[] = 'Invalid session. Please refresh and try again.';
     } else {
         $action = (string) ($_POST['action'] ?? '');
@@ -200,8 +203,13 @@ $daysCompleted = 0;
 $latestWeight = null;
 
 try {
-    $stmt = db()->prepare('SELECT day_number, weight_lbs, recorded_at FROM client_checkins WHERE client_id = ? AND coach_user_id = ? ORDER BY day_number ASC');
-    $stmt->execute([(int) $client['id'], (int) $user['id']]);
+    if ($isAdmin) {
+        $stmt = db()->prepare('SELECT day_number, weight_lbs, recorded_at FROM client_checkins WHERE client_id = ? ORDER BY day_number ASC');
+        $stmt->execute([(int) $client['id']]);
+    } else {
+        $stmt = db()->prepare('SELECT day_number, weight_lbs, recorded_at FROM client_checkins WHERE client_id = ? AND coach_user_id = ? ORDER BY day_number ASC');
+        $stmt->execute([(int) $client['id'], (int) $user['id']]);
+    }
     $checkins = $stmt->fetchAll();
     $daysCompleted = count($checkins);
     if ($checkins) {
@@ -306,7 +314,7 @@ require __DIR__ . '/../partials/nav.php';
             <h1 class="text-3xl font-extrabold tracking-tight"><?= h($name) ?></h1>
             <p class="mt-1 text-sm text-zinc-600">Client details, progress summary, check-in history, and progress photos.</p>
         </div>
-        <a href="<?= h(url('/coach/clients.php')) ?>" class="inline-flex items-center justify-center rounded-xl border border-orange-100 bg-white px-4 py-3 text-sm font-extrabold text-zinc-700 hover:bg-orange-50">Back to Clients</a>
+        <a href="<?= h($isAdmin ? url('/admin/clients.php') : url('/coach/clients.php')) ?>" class="inline-flex items-center justify-center rounded-xl border border-orange-100 bg-white px-4 py-3 text-sm font-extrabold text-zinc-700 hover:bg-orange-50">Back to Clients</a>
     </div>
 
     <?php if ($success): ?>
