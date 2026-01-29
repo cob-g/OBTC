@@ -7,6 +7,47 @@ $page = (int) ($_GET['page'] ?? 1);
 if ($page < 1) {
     $page = 1;
 }
+$errors = [];
+$success = null;
+
+if (isset($_GET['msg'])) {
+    $msg = (string) $_GET['msg'];
+    if ($msg === 'deleted') {
+        $success = 'Client deleted.';
+    } elseif ($msg === 'delete_failed') {
+        $errors[] = 'Failed to delete client.';
+    } elseif ($msg === 'not_found') {
+        $errors[] = 'Client not found.';
+    }
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!csrf_verify()) {
+        $errors[] = 'Invalid session. Please refresh and try again.';
+    } else {
+        $action = (string) ($_POST['action'] ?? '');
+        if ($action === 'delete_client') {
+            $clientId = (int) ($_POST['client_id'] ?? 0);
+            if ($clientId <= 0) {
+                redirect(url('/coach/clients.php?msg=not_found&page=' . (int) $page));
+            }
+
+            try {
+                $stmt = db()->prepare('SELECT id FROM clients WHERE id = ? AND coach_user_id = ? LIMIT 1');
+                $stmt->execute([(int) $clientId, (int) $user['id']]);
+                if (!$stmt->fetch()) {
+                    redirect(url('/coach/clients.php?msg=not_found&page=' . (int) $page));
+                }
+
+                $del = db()->prepare('DELETE FROM clients WHERE id = ? AND coach_user_id = ?');
+                $del->execute([(int) $clientId, (int) $user['id']]);
+                redirect(url('/coach/clients.php?msg=deleted&page=' . (int) $page));
+            } catch (Throwable $e) {
+                redirect(url('/coach/clients.php?msg=delete_failed&page=' . (int) $page));
+            }
+        }
+    }
+}
 $perPage = 10;
 $clients = [];
 $totalClients = 0;
@@ -51,6 +92,23 @@ require __DIR__ . '/../partials/nav.php';
         <p class="mt-1 text-sm text-zinc-600">Registered clients for this coach.</p>
     </div>
 
+    <?php if ($success): ?>
+        <div class="mb-5 rounded-2xl border border-green-200 bg-green-50 p-4 text-sm font-semibold text-green-800">
+            <?= h($success) ?>
+        </div>
+    <?php endif; ?>
+
+    <?php if ($errors): ?>
+        <div class="mb-5 rounded-2xl border border-red-200 bg-red-50 p-4">
+            <div class="text-sm font-extrabold text-red-800">Please fix the following:</div>
+            <ul class="mt-2 list-disc pl-5 text-sm text-red-700">
+                <?php foreach ($errors as $e): ?>
+                    <li><?= h((string) $e) ?></li>
+                <?php endforeach; ?>
+            </ul>
+        </div>
+    <?php endif; ?>
+
     <div class="rounded-2xl border border-orange-100 bg-white p-6">
         <div class="flex items-center justify-between gap-3">
             <div>
@@ -69,7 +127,7 @@ require __DIR__ . '/../partials/nav.php';
                         <th class="py-3 pr-4">Stats</th>
                         <th class="py-3 pr-4">BMI</th>
                         <th class="py-3 pr-0">Category</th>
-                        <th class="py-3 pl-4 text-right">Details</th>
+                        <th class="py-3 pl-4 text-right">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -96,7 +154,15 @@ require __DIR__ . '/../partials/nav.php';
                             <?php $cat = isset($c['bmi_category']) ? trim((string) $c['bmi_category']) : ''; ?>
                             <td class="py-4 pr-0 text-zinc-800"><?= $cat !== '' ? h($cat) : '-' ?></td>
                             <td class="py-4 pl-4 text-right">
-                                <a class="inline-flex items-center justify-center rounded-xl border border-orange-100 bg-white px-3 py-2 text-xs font-extrabold text-zinc-700 hover:bg-orange-50" href="<?= h(url('/coach/client_details.php?id=' . (int) $c['id'])) ?>">View</a>
+                                <div class="flex flex-wrap items-center justify-end gap-2">
+                                    <a class="inline-flex items-center justify-center rounded-xl border border-orange-100 bg-white px-3 py-2 text-xs font-extrabold text-zinc-700 hover:bg-orange-50" href="<?= h(url('/coach/client_details.php?id=' . (int) $c['id'])) ?>">View</a>
+                                    <form method="post" onsubmit="return confirm('Delete this client? This will remove their check-ins and consent logs. This cannot be undone.');">
+                                        <?= csrf_field() ?>
+                                        <input type="hidden" name="action" value="delete_client" />
+                                        <input type="hidden" name="client_id" value="<?= h((string) $c['id']) ?>" />
+                                        <button type="submit" class="inline-flex items-center justify-center rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-extrabold text-red-700 hover:bg-red-100">Delete</button>
+                                    </form>
+                                </div>
                             </td>
                         </tr>
                     <?php endforeach; ?>

@@ -13,6 +13,7 @@ $client = null;
 $hasFullName = db_has_column('clients', 'full_name');
 $hasDay10Front = db_has_column('clients', 'day10_front_photo_path');
 $hasDay10Side = db_has_column('clients', 'day10_side_photo_path');
+$hasChallengeStartDate = db_has_column('clients', 'challenge_start_date');
 
 $errors = [];
 $success = null;
@@ -20,10 +21,12 @@ $success = null;
 try {
     $select = $hasFullName
         ? 'SELECT id, coach_user_id, full_name, gender, age, height_ft, height_in, start_weight_lbs, waistline_in, bmi, bmi_category, front_photo_path, side_photo_path, registered_at' .
+            ($hasChallengeStartDate ? ', challenge_start_date' : '') .
             ($hasDay10Front ? ', day10_front_photo_path' : '') .
             ($hasDay10Side ? ', day10_side_photo_path' : '') .
             ' FROM clients WHERE id = ? LIMIT 1'
         : 'SELECT id, coach_user_id, gender, age, height_ft, height_in, start_weight_lbs, waistline_in, bmi, bmi_category, front_photo_path, side_photo_path, registered_at' .
+            ($hasChallengeStartDate ? ', challenge_start_date' : '') .
             ($hasDay10Front ? ', day10_front_photo_path' : '') .
             ($hasDay10Side ? ', day10_side_photo_path' : '') .
             ' FROM clients WHERE id = ? LIMIT 1';
@@ -120,6 +123,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             if (!$errors) {
+                try {
+                    $stmt = db()->prepare('SELECT 1 FROM client_checkins WHERE client_id = ? AND coach_user_id = ? AND day_number = 10 LIMIT 1');
+                    $stmt->execute([(int) $client['id'], (int) $user['id']]);
+                    if (!$stmt->fetchColumn()) {
+                        $errors[] = 'Day 10 photos can only be uploaded after the Day 10 weigh-in is recorded.';
+                    }
+                } catch (Throwable $e) {
+                    $errors[] = 'Failed to validate Day 10 check-in.';
+                }
+            }
+
+            if (!$errors) {
                 $baseDir = project_root_path('storage/uploads/clients/' . (int) $client['id'] . '/day10');
 
                 $updatedFront = false;
@@ -206,6 +221,70 @@ foreach ($checkins as $row) {
         break;
     }
 }
+
+$checkinsByDay = [];
+foreach ($checkins as $row) {
+    $dn = (int) ($row['day_number'] ?? 0);
+    if ($dn >= 1 && $dn <= 10) {
+        $checkinsByDay[$dn] = $row;
+    }
+}
+
+function challenge_start_date_for_client_details(array $client)
+{
+    if (!empty($client['challenge_start_date'])) {
+        return (string) $client['challenge_start_date'];
+    }
+
+    $registeredAt = isset($client['registered_at']) ? (string) $client['registered_at'] : '';
+    if ($registeredAt === '') {
+        return null;
+    }
+
+    try {
+        $dt = new DateTimeImmutable($registeredAt);
+    } catch (Throwable $e) {
+        return null;
+    }
+
+    $dow = (int) $dt->format('N');
+    if ($dow === 1) {
+        return $dt->format('Y-m-d');
+    }
+    if ($dow === 2) {
+        return $dt->modify('monday this week')->format('Y-m-d');
+    }
+    return $dt->modify('next monday')->format('Y-m-d');
+}
+
+function challenge_day_from_start_details($startDate)
+{
+    if (!$startDate) {
+        return null;
+    }
+
+    try {
+        $start = new DateTimeImmutable((string) $startDate . ' 00:00:00');
+    } catch (Throwable $e) {
+        return null;
+    }
+
+    $today = new DateTimeImmutable('today');
+    if ($today < $start) {
+        return 0;
+    }
+
+    $diffDays = (int) $start->diff($today)->format('%a');
+    $day = $diffDays + 1;
+    if ($day > 10) {
+        return 11;
+    }
+    return $day;
+}
+
+$challengeStartDate = challenge_start_date_for_client_details($client);
+$currentDay = challenge_day_from_start_details($challengeStartDate);
+$maxDayAllowed = $currentDay === null ? 0 : ($currentDay === 0 ? 0 : ($currentDay === 11 ? 10 : (int) $currentDay));
 
 $hasDay10Photos = ($hasDay10Front && !empty($client['day10_front_photo_path'])) && ($hasDay10Side && !empty($client['day10_side_photo_path']));
 $isCompleted = $hasDay10Checkin && $hasDay10Photos;
@@ -313,18 +392,21 @@ require __DIR__ . '/../partials/nav.php';
 
                 <div>
                     <label class="block text-xs font-extrabold uppercase tracking-wide text-zinc-600">Day 10 Front</label>
-                    <input type="file" name="day10_front" accept="image/jpeg,image/png" class="mt-2 block w-full rounded-xl border border-orange-100 bg-white px-3 py-2 text-sm text-zinc-700" />
+                    <input type="file" name="day10_front" accept="image/jpeg,image/png" class="mt-2 block w-full rounded-xl border border-orange-100 bg-white px-3 py-2 text-sm text-zinc-700" <?= !$hasDay10Checkin ? 'disabled' : '' ?> />
                 </div>
 
                 <div>
                     <label class="block text-xs font-extrabold uppercase tracking-wide text-zinc-600">Day 10 Side</label>
-                    <input type="file" name="day10_side" accept="image/jpeg,image/png" class="mt-2 block w-full rounded-xl border border-orange-100 bg-white px-3 py-2 text-sm text-zinc-700" />
+                    <input type="file" name="day10_side" accept="image/jpeg,image/png" class="mt-2 block w-full rounded-xl border border-orange-100 bg-white px-3 py-2 text-sm text-zinc-700" <?= !$hasDay10Checkin ? 'disabled' : '' ?> />
                 </div>
 
                 <div class="sm:text-right">
-                    <button type="submit" class="w-full rounded-xl bg-molten px-4 py-3 text-sm font-extrabold text-white hover:bg-pumpkin sm:w-auto">Upload Day 10 Photos</button>
+                    <button type="submit" class="w-full rounded-xl bg-molten px-4 py-3 text-sm font-extrabold text-white hover:bg-pumpkin sm:w-auto" <?= !$hasDay10Checkin ? 'disabled' : '' ?>>Upload Day 10 Photos</button>
                 </div>
             </form>
+            <?php if (!$hasDay10Checkin): ?>
+                <div class="mt-3 text-sm text-zinc-600">Day 10 photo upload is locked until the Day 10 weigh-in is recorded.</div>
+            <?php endif; ?>
         <?php else: ?>
             <div class="mt-4 text-sm text-zinc-600">Day 10 photo uploads are not available on this database schema.</div>
         <?php endif; ?>
@@ -377,18 +459,24 @@ require __DIR__ . '/../partials/nav.php';
                         </tr>
                     </thead>
                     <tbody>
-                        <?php if (!$checkins): ?>
-                            <tr>
-                                <td colspan="3" class="py-6 text-zinc-600">No daily check-ins yet.</td>
-                            </tr>
-                        <?php endif; ?>
-                        <?php foreach ($checkins as $row): ?>
+                        <?php for ($d = 1; $d <= 10; $d++): ?>
+                            <?php $row = $checkinsByDay[$d] ?? null; ?>
                             <tr class="border-b border-orange-50">
-                                <td class="py-4 pr-4 font-extrabold text-zinc-900">Day <?= h((string) $row['day_number']) ?></td>
-                                <td class="py-4 pr-4 text-zinc-700"><?= h((string) $row['weight_lbs']) ?></td>
-                                <td class="py-4 pr-0 text-zinc-700"><?= h((string) $row['recorded_at']) ?></td>
+                                <td class="py-4 pr-4 font-extrabold text-zinc-900">Day <?= h((string) $d) ?></td>
+                                <?php if ($row): ?>
+                                    <td class="py-4 pr-4 text-zinc-700"><?= h((string) $row['weight_lbs']) ?></td>
+                                    <td class="py-4 pr-0 text-zinc-700"><?= h((string) $row['recorded_at']) ?></td>
+                                <?php else: ?>
+                                    <?php if ($maxDayAllowed > 0 && $d <= $maxDayAllowed): ?>
+                                        <td class="py-4 pr-4 font-extrabold text-red-700">Missed</td>
+                                        <td class="py-4 pr-0 text-zinc-500">-</td>
+                                    <?php else: ?>
+                                        <td class="py-4 pr-4 text-zinc-500">Upcoming</td>
+                                        <td class="py-4 pr-0 text-zinc-500">-</td>
+                                    <?php endif; ?>
+                                <?php endif; ?>
                             </tr>
-                        <?php endforeach; ?>
+                        <?php endfor; ?>
                     </tbody>
                 </table>
             </div>

@@ -96,11 +96,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     if ($currentDay === 0) {
                         $errors[] = 'Challenge has not started yet for this client.';
                     } elseif ($currentDay === 11) {
-                        if ($dayNumber > 10) {
-                            $errors[] = 'You cannot record a future day weigh-in.';
+                        $errors[] = 'This challenge is already completed. Past days cannot be recorded.';
+                    } elseif ($currentDay !== null && $dayNumber !== (int) $currentDay) {
+                        $errors[] = 'You can only record today\'s weigh-in (Day ' . (string) $currentDay . '). Missed days cannot be backfilled.';
+                    }
+
+                    if (!$errors) {
+                        try {
+                            $dup = db()->prepare('SELECT 1 FROM client_checkins WHERE client_id = ? AND coach_user_id = ? AND day_number = ? LIMIT 1');
+                            $dup->execute([$clientId, (int) $user['id'], $dayNumber]);
+                            if ($dup->fetchColumn()) {
+                                $errors[] = 'A weigh-in for this day is already recorded and cannot be overwritten.';
+                            }
+                        } catch (Throwable $e) {
+                            $errors[] = 'Failed to validate existing check-ins.';
                         }
-                    } elseif ($currentDay !== null && $dayNumber > (int) $currentDay) {
-                        $errors[] = 'You cannot record a future day weigh-in.';
                     }
                 }
             }
@@ -108,7 +118,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!$errors) {
                 try {
                     $now = (new DateTimeImmutable('now'))->format('Y-m-d H:i:s');
-                    $ins = db()->prepare('INSERT INTO client_checkins (client_id, coach_user_id, day_number, weight_lbs, recorded_at) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE weight_lbs = VALUES(weight_lbs), recorded_at = VALUES(recorded_at)');
+                    $ins = db()->prepare('INSERT INTO client_checkins (client_id, coach_user_id, day_number, weight_lbs, recorded_at) VALUES (?, ?, ?, ?, ?)');
                     $ins->execute([$clientId, (int) $user['id'], $dayNumber, number_format($weight, 2, '.', ''), $now]);
                     $success = 'Saved check-in for Day ' . (string) $dayNumber . '.';
                 } catch (Throwable $e) {
@@ -162,7 +172,7 @@ if ($clients) {
     $ids = array_map(fn ($c) => (int) $c['id'], $clients);
     $placeholders = implode(',', array_fill(0, count($ids), '?'));
     try {
-        $sql = 'SELECT client_id, COUNT(*) AS days_completed, MAX(day_number) AS max_day, SUBSTRING_INDEX(GROUP_CONCAT(weight_lbs ORDER BY day_number DESC), ",", 1) AS latest_weight FROM client_checkins WHERE coach_user_id = ? AND client_id IN (' . $placeholders . ') GROUP BY client_id';
+        $sql = 'SELECT client_id, COUNT(*) AS days_completed, MAX(day_number) AS max_day, GROUP_CONCAT(day_number ORDER BY day_number ASC) AS day_numbers, SUBSTRING_INDEX(GROUP_CONCAT(weight_lbs ORDER BY day_number DESC), ",", 1) AS latest_weight FROM client_checkins WHERE coach_user_id = ? AND client_id IN (' . $placeholders . ') GROUP BY client_id';
         $stmt = db()->prepare($sql);
         $stmt->execute(array_merge([(int) $user['id']], $ids));
         $rows = $stmt->fetchAll();
@@ -245,7 +255,13 @@ require __DIR__ . '/../partials/nav.php';
                             $latestWeight = $agg && $agg['latest_weight'] !== null ? (float) $agg['latest_weight'] : null;
                             $loss = $latestWeight === null ? null : max(0, (float) $c['start_weight_lbs'] - $latestWeight);
                             $maxDayAllowed = $day === null ? 0 : ($day === 0 ? 0 : ($day === 11 ? 10 : (int) $day));
-                            $defaultDay = $maxDayAllowed >= 1 ? $maxDayAllowed : 1;
+                            $recordedDayNumbers = [];
+                            if ($agg && isset($agg['day_numbers']) && (string) $agg['day_numbers'] !== '') {
+                                $recordedDayNumbers = array_map('intval', array_filter(explode(',', (string) $agg['day_numbers']), fn ($v) => $v !== ''));
+                            }
+
+                            $currentDayNumber = $day === null ? 0 : ($day === 0 ? 0 : ($day === 11 ? 0 : (int) $day));
+                            $canRecordToday = $currentDayNumber >= 1 && $currentDayNumber <= 10 && !in_array($currentDayNumber, $recordedDayNumbers, true);
                         ?>
                         <tr class="border-b border-orange-50">
                             <td class="py-4 pr-4">
@@ -263,20 +279,22 @@ require __DIR__ . '/../partials/nav.php';
                                     <input type="hidden" name="action" value="record_checkin" />
                                     <input type="hidden" name="client_id" value="<?= h((string) $c['id']) ?>" />
 
-                                    <select name="day_number" class="rounded-xl border border-orange-100 bg-white px-3 py-2 text-xs font-extrabold text-zinc-700 outline-none ring-molten/20 focus:border-molten focus:ring-4" <?= $maxDayAllowed < 1 ? 'disabled' : '' ?>>
-                                        <?php for ($i = 1; $i <= 10; $i++): ?>
-                                            <?php if ($maxDayAllowed >= 1 && $i <= $maxDayAllowed): ?>
-                                                <option value="<?= $i ?>" <?= $i === $defaultDay ? 'selected' : '' ?>>Day <?= $i ?></option>
-                                            <?php endif; ?>
-                                        <?php endfor; ?>
+                                    <select name="day_number" class="rounded-xl border border-orange-100 bg-white px-3 py-2 text-xs font-extrabold text-zinc-700 outline-none ring-molten/20 focus:border-molten focus:ring-4" <?= !$canRecordToday ? 'disabled' : '' ?>>
+                                        <?php if ($canRecordToday): ?>
+                                            <option value="<?= (int) $currentDayNumber ?>" selected>Day <?= (int) $currentDayNumber ?></option>
+                                        <?php endif; ?>
                                     </select>
 
-                                    <input name="weight_lbs" type="number" min="50" max="500" step="0.01" value="" placeholder="Weight" class="w-28 rounded-xl border border-orange-100 bg-white px-3 py-2 text-xs font-extrabold text-zinc-700 outline-none ring-molten/20 focus:border-molten focus:ring-4" <?= $maxDayAllowed < 1 ? 'disabled' : '' ?> />
+                                    <input name="weight_lbs" type="number" min="50" max="500" step="0.01" value="" placeholder="Weight" class="w-28 rounded-xl border border-orange-100 bg-white px-3 py-2 text-xs font-extrabold text-zinc-700 outline-none ring-molten/20 focus:border-molten focus:ring-4" <?= !$canRecordToday ? 'disabled' : '' ?> />
 
-                                    <button type="submit" class="rounded-xl bg-molten px-3 py-2 text-xs font-extrabold text-white hover:bg-pumpkin" <?= $maxDayAllowed < 1 ? 'disabled' : '' ?>>Save</button>
+                                    <button type="submit" class="rounded-xl bg-molten px-3 py-2 text-xs font-extrabold text-white hover:bg-pumpkin" <?= !$canRecordToday ? 'disabled' : '' ?>>Save</button>
                                 </form>
-                                <?php if ($maxDayAllowed < 1): ?>
+                                <?php if ($day === 0): ?>
                                     <div class="mt-2 text-right text-xs text-zinc-500">Upcoming challenge</div>
+                                <?php elseif ($day === 11): ?>
+                                    <div class="mt-2 text-right text-xs text-zinc-500">Challenge completed</div>
+                                <?php elseif (!$canRecordToday): ?>
+                                    <div class="mt-2 text-right text-xs text-zinc-500">Today\'s weigh-in is already recorded</div>
                                 <?php endif; ?>
                             </td>
                         </tr>
