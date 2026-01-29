@@ -15,6 +15,16 @@ $hasFullName = db_has_column('clients', 'full_name');
 $hasDay10Front = db_has_column('clients', 'day10_front_photo_path');
 $hasDay10Side = db_has_column('clients', 'day10_side_photo_path');
 $hasChallengeStartDate = db_has_column('clients', 'challenge_start_date');
+$hasDay10Waist = db_has_column('clients', 'day10_waistline_in');
+
+if (!$hasDay10Waist) {
+    try {
+        db()->exec('ALTER TABLE clients ADD COLUMN day10_waistline_in DECIMAL(6,2) NULL AFTER waistline_in');
+        $hasDay10Waist = db_has_column('clients', 'day10_waistline_in');
+    } catch (Throwable $e) {
+        $hasDay10Waist = false;
+    }
+}
 
 $errors = [];
 $success = null;
@@ -25,11 +35,13 @@ try {
             ($hasChallengeStartDate ? ', challenge_start_date' : '') .
             ($hasDay10Front ? ', day10_front_photo_path' : '') .
             ($hasDay10Side ? ', day10_side_photo_path' : '') .
+            ($hasDay10Waist ? ', day10_waistline_in' : '') .
             ' FROM clients WHERE id = ? LIMIT 1'
         : 'SELECT id, coach_user_id, gender, age, height_ft, height_in, start_weight_lbs, waistline_in, bmi, bmi_category, front_photo_path, side_photo_path, registered_at' .
             ($hasChallengeStartDate ? ', challenge_start_date' : '') .
             ($hasDay10Front ? ', day10_front_photo_path' : '') .
             ($hasDay10Side ? ', day10_side_photo_path' : '') .
+            ($hasDay10Waist ? ', day10_waistline_in' : '') .
             ' FROM clients WHERE id = ? LIMIT 1';
 
     $stmt = db()->prepare($select);
@@ -125,6 +137,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $errors[] = 'Day 10 photo uploads are not enabled in this database schema.';
             }
 
+            $day10WaistRaw = trim((string) ($_POST['day10_waistline_in'] ?? ''));
+            $day10Waist = null;
+            $updateWaist = false;
+            if ($hasDay10Waist) {
+                if ($day10WaistRaw === '') {
+                    $errors[] = 'Day 10 waistline is required.';
+                } elseif (!is_numeric($day10WaistRaw)) {
+                    $errors[] = 'Day 10 waistline must be a valid number.';
+                } else {
+                    $day10Waist = (float) $day10WaistRaw;
+                    if ($day10Waist < 20 || $day10Waist > 80) {
+                        $errors[] = 'Day 10 waistline must be between 20 and 80 inches.';
+                    } else {
+                        $updateWaist = true;
+                    }
+                }
+            }
+
             if (!$errors) {
                 try {
                     $stmt = db()->prepare('SELECT 1 FROM client_checkins WHERE client_id = ? AND coach_user_id = ? AND day_number = 10 LIMIT 1');
@@ -165,27 +195,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                 }
 
-                if (!$errors && !$updatedFront && !$updatedSide) {
+                if (!$errors && !$updatedFront && !$updatedSide && !$updateWaist) {
                     $errors[] = 'Please select at least one Day 10 photo to upload.';
                 }
 
                 if (!$errors) {
                     try {
-                        if ($updatedFront && $updatedSide) {
-                            $stmt = db()->prepare('UPDATE clients SET day10_front_photo_path = ?, day10_side_photo_path = ? WHERE id = ? AND coach_user_id = ?');
-                            $stmt->execute([(string) $frontPath, (string) $sidePath, (int) $client['id'], (int) $user['id']]);
-                        } elseif ($updatedFront) {
-                            $stmt = db()->prepare('UPDATE clients SET day10_front_photo_path = ? WHERE id = ? AND coach_user_id = ?');
-                            $stmt->execute([(string) $frontPath, (int) $client['id'], (int) $user['id']]);
-                        } elseif ($updatedSide) {
-                            $stmt = db()->prepare('UPDATE clients SET day10_side_photo_path = ? WHERE id = ? AND coach_user_id = ?');
-                            $stmt->execute([(string) $sidePath, (int) $client['id'], (int) $user['id']]);
+                        $setParts = [];
+                        $params = [];
+
+                        if ($updatedFront) {
+                            $setParts[] = 'day10_front_photo_path = ?';
+                            $params[] = (string) $frontPath;
+                        }
+                        if ($updatedSide) {
+                            $setParts[] = 'day10_side_photo_path = ?';
+                            $params[] = (string) $sidePath;
+                        }
+                        if ($updateWaist && $hasDay10Waist) {
+                            $setParts[] = 'day10_waistline_in = ?';
+                            $params[] = number_format((float) $day10Waist, 2, '.', '');
                         }
 
-                        $success = 'Day 10 photos uploaded.';
+                        $params[] = (int) $client['id'];
+                        $params[] = (int) $user['id'];
+
+                        $stmt = db()->prepare('UPDATE clients SET ' . implode(', ', $setParts) . ' WHERE id = ? AND coach_user_id = ?');
+                        $stmt->execute($params);
+
+                        $success = 'Day 10 progress saved.';
                         redirect(url('/coach/client_details.php?id=' . (int) $client['id']));
                     } catch (Throwable $e) {
-                        $errors[] = 'Failed to save Day 10 photos.';
+                        $errors[] = 'Failed to save Day 10 progress.';
                     }
                 }
             }
@@ -402,6 +443,14 @@ require __DIR__ . '/../partials/nav.php';
                     <label class="block text-xs font-extrabold uppercase tracking-wide text-zinc-600">Day 10 Front</label>
                     <input type="file" name="day10_front" accept="image/jpeg,image/png" class="mt-2 block w-full rounded-xl border border-orange-100 bg-white px-3 py-2 text-sm text-zinc-700" <?= !$hasDay10Checkin ? 'disabled' : '' ?> />
                 </div>
+
+                <?php if ($hasDay10Waist): ?>
+                    <?php $day10WaistVal = isset($client['day10_waistline_in']) ? (string) $client['day10_waistline_in'] : ''; ?>
+                    <div>
+                        <label class="block text-xs font-extrabold uppercase tracking-wide text-zinc-600">Day 10 Waistline (in)</label>
+                        <input type="number" step="0.01" min="20" max="80" name="day10_waistline_in" value="<?= h($day10WaistVal) ?>" class="mt-2 block w-full rounded-xl border border-orange-100 bg-white px-3 py-2 text-sm text-zinc-700" <?= !$hasDay10Checkin ? 'disabled' : '' ?> />
+                    </div>
+                <?php endif; ?>
 
                 <div>
                     <label class="block text-xs font-extrabold uppercase tracking-wide text-zinc-600">Day 10 Side</label>

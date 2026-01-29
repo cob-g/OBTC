@@ -225,74 +225,55 @@ require __DIR__ . '/../partials/layout_top.php';
                 </div>
             </div>
 
-            <div class="grid grid-cols-2 gap-0">
-                <div class="border-r border-[#e5e4dc] p-6">
-                    <div class="mb-3 text-center text-[11px] font-black uppercase tracking-widest text-[#888263]">Front</div>
-                    <div class="grid grid-cols-2 gap-4">
-                        <div class="overflow-hidden rounded-lg border border-[#e5e4dc] bg-[#f4f4f0]">
-                            <div class="px-2 py-1 text-center text-[10px] font-black uppercase tracking-widest text-[#181711]">Day 1</div>
-                            <div class="aspect-[4/3] w-full">
-                                <?php if ($day1FrontSrc !== ''): ?>
-                                    <img src="<?= h($day1FrontSrc) ?>" alt="Day 1 front" class="h-full w-full object-cover" />
-                                <?php else: ?>
-                                    <div class="flex h-full w-full items-center justify-center text-xs font-bold text-[#888263]">No Photo</div>
-                                <?php endif; ?>
-                            </div>
+            <div class="p-6">
+                <div class="flex items-center justify-between gap-6">
+                    <div class="text-5xl font-black tracking-tight text-orange-600">#1</div>
+                    <div class="flex items-end gap-3">
+                        <div class="text-right">
+                            <div class="text-[11px] font-black uppercase tracking-wide text-[#888263]">Lost Inches</div>
+                            <div class="text-3xl font-black tracking-tight text-[#181711]"><?= h($lostInchesText) ?></div>
                         </div>
-                        <div class="overflow-hidden rounded-lg border border-[#e5e4dc] bg-[#f4f4f0]">
-                            <div class="px-2 py-1 text-center text-[10px] font-black uppercase tracking-widest text-[#181711]">Day 10</div>
-                            <div class="aspect-[4/3] w-full">
-                                <?php if ($day10FrontSrc !== ''): ?>
-                                    <img src="<?= h($day10FrontSrc) ?>" alt="Day 10 front" class="h-full w-full object-cover" />
-                                <?php else: ?>
-                                    <div class="flex h-full w-full items-center justify-center text-xs font-bold text-[#888263]">No Photo</div>
-                                <?php endif; ?>
-                            </div>
+                        <div class="text-3xl font-black tracking-tight text-[#181711]">|</div>
+                        <div class="text-right">
+                            <div class="text-[11px] font-black uppercase tracking-wide text-[#888263]">Lost Lbs</div>
+                            <div class="text-3xl font-black tracking-tight text-[#181711]"><?= h($lossLbsText) ?></div>
+                        </div>
+                        <div class="text-3xl font-black tracking-tight text-[#181711]">|</div>
+                        <div class="text-right">
+                            <div class="text-[11px] font-black uppercase tracking-wide text-[#888263]">Loss %</div>
+                            <div class="text-3xl font-black tracking-tight text-orange-600"><?= h($lossPctText) ?>%</div>
                         </div>
                     </div>
                 </div>
 
-                <div class="p-6">
-                    <div class="mb-3 text-center text-[11px] font-black uppercase tracking-widest text-[#888263]">Side</div>
-                    <div class="grid grid-cols-2 gap-4">
-                        <div class="overflow-hidden rounded-lg border border-[#e5e4dc] bg-[#f4f4f0]">
-                            <div class="px-2 py-1 text-center text-[10px] font-black uppercase tracking-widest text-[#181711]">Day 1</div>
-                            <div class="aspect-[4/3] w-full">
-                                <?php if ($day1SideSrc !== ''): ?>
-                                    <img src="<?= h($day1SideSrc) ?>" alt="Day 1 side" class="h-full w-full object-cover" />
-                                <?php else: ?>
-                                    <div class="flex h-full w-full items-center justify-center text-xs font-bold text-[#888263]">No Photo</div>
-                                <?php endif; ?>
-                            </div>
-                        </div>
-                        <div class="overflow-hidden rounded-lg border border-[#e5e4dc] bg-[#f4f4f0]">
-                            <div class="px-2 py-1 text-center text-[10px] font-black uppercase tracking-widest text-[#181711]">Day 10</div>
-                            <div class="aspect-[4/3] w-full">
-                                <?php if ($day10SideSrc !== ''): ?>
-                                    <img src="<?= h($day10SideSrc) ?>" alt="Day 10 side" class="h-full w-full object-cover" />
-                                <?php else: ?>
-                                    <div class="flex h-full w-full items-center justify-center text-xs font-bold text-[#888263]">No Photo</div>
-                                <?php endif; ?>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="border-t border-[#e5e4dc] bg-gradient-to-r from-[#f7f6f0] to-[#ffffff] p-6">
-                <div class="flex items-center justify-center gap-3 text-center">
-                    <div class="text-2xl font-black tracking-tight text-[#181711]">
-                        LOST <?= h($lostInchesText) ?> INCHES
-                    </div>
-                    <div class="text-2xl font-black tracking-tight text-[#181711]">
-                        <?= h($lossLbsText) ?> LBS
-                    </div>
-                    <div class="text-2xl font-black tracking-tight text-orange-600">
-                        | <?= h($lossPctText) ?>%
-                    </div>
-                </div>
                 <div class="mt-2 text-center text-[11px] font-bold text-[#888263]">
                     Category: <?= h($categoryText) ?> • Days Completed: <?= h((string) (int) ($top1['days_completed'] ?? 0)) ?>/10
+                </div>
+
+                <div class="mt-5 grid grid-cols-4 gap-4">
+                    <?php
+                        $pdfPhotos = [
+                            ['src' => $day1FrontSrc, 'label' => 'FRONT BEFORE (DAY 1)'],
+                            ['src' => $day10FrontSrc, 'label' => 'FRONT AFTER (DAY 10)'],
+                            ['src' => $day1SideSrc, 'label' => 'SIDE BEFORE (DAY 1)'],
+                            ['src' => $day10SideSrc, 'label' => 'SIDE AFTER (DAY 10)'],
+                        ];
+                    ?>
+
+                    <?php foreach ($pdfPhotos as $p): ?>
+                        <div class="flex flex-col gap-2">
+                            <div class="text-center text-[10px] font-black uppercase tracking-wide text-[#888263]"><?= h($p['label']) ?></div>
+                            <div class="aspect-[3/4] rounded-lg border border-[#e5e4dc] bg-[#f4f4f0] overflow-hidden">
+                                <?php if (!empty($p['src'])): ?>
+                                    <img src="<?= h($p['src']) ?>" alt="<?= h($p['label']) ?>" class="w-full h-full object-contain" />
+                                <?php else: ?>
+                                    <div class="flex h-full w-full items-center justify-center">
+                                        <span class="material-symbols-outlined text-[#888263]">image</span>
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
                 </div>
             </div>
         </div>

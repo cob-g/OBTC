@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS clients (
   height_in TINYINT UNSIGNED NOT NULL,
   start_weight_lbs DECIMAL(6,2) NOT NULL,
   waistline_in DECIMAL(6,2) NOT NULL,
+  day10_waistline_in DECIMAL(6,2) NULL,
   bmi DECIMAL(6,2) NOT NULL,
   bmi_category VARCHAR(32) NOT NULL,
   front_photo_path VARCHAR(255) NOT NULL,

@@ -141,6 +141,7 @@ if (isset($_GET['export'])) {
                 $hasChallengeStart = db_has_column('clients', 'challenge_start_date');
                 $hasDay10Front = db_has_column('clients', 'day10_front_photo_path');
                 $hasDay10Side = db_has_column('clients', 'day10_side_photo_path');
+                $hasDay10Waist = db_has_column('clients', 'day10_waistline_in');
 
                 $clientCols = ['c.id', 'c.coach_user_id'];
                 if ($hasFullName) {
@@ -152,6 +153,9 @@ if (isset($_GET['export'])) {
                 $clientCols[] = 'c.height_in';
                 $clientCols[] = 'c.start_weight_lbs';
                 $clientCols[] = 'c.waistline_in';
+                if ($hasDay10Waist) {
+                    $clientCols[] = 'c.day10_waistline_in';
+                }
                 $clientCols[] = 'c.bmi';
                 $clientCols[] = 'c.bmi_category';
                 $clientCols[] = 'c.front_photo_path';
@@ -220,6 +224,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $hasChallengeStart = db_has_column('clients', 'challenge_start_date');
                     $hasDay10Front = db_has_column('clients', 'day10_front_photo_path');
                     $hasDay10Side = db_has_column('clients', 'day10_side_photo_path');
+                    $hasDay10Waist = db_has_column('clients', 'day10_waistline_in');
 
                     $clientCols = ['c.id', 'c.coach_user_id'];
                     if ($hasFullName) {
@@ -231,6 +236,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $clientCols[] = 'c.height_in';
                     $clientCols[] = 'c.start_weight_lbs';
                     $clientCols[] = 'c.waistline_in';
+                    if ($hasDay10Waist) {
+                        $clientCols[] = 'c.day10_waistline_in';
+                    }
                     $clientCols[] = 'c.bmi';
                     $clientCols[] = 'c.bmi_category';
                     $clientCols[] = 'c.front_photo_path';

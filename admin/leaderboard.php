@@ -294,7 +294,7 @@ if ($activeCategory && isset($topByCategory[$activeCategory])) {
                                             <?php if (!empty($row['front_photo_path'])): ?>
                                                 <img src="<?= h(url('/media/client_photo.php?id=' . (int) $row['client_id'] . '&photo=day1_front')) ?>" 
                                                      alt="Day 1 front" 
-                                                     class="w-full h-full object-cover" />
+                                                     class="w-full h-full object-contain" />
                                             <?php else: ?>
                                                 <div class="flex h-full w-full items-center justify-center">
                                                     <span class="material-symbols-outlined text-[#888263]">image</span>
@@ -308,7 +308,7 @@ if ($activeCategory && isset($topByCategory[$activeCategory])) {
                                             <?php if (!empty($row['day10_front_photo_path'])): ?>
                                                 <img src="<?= h(url('/media/client_photo.php?id=' . (int) $row['client_id'] . '&photo=day10_front')) ?>" 
                                                      alt="Day 10 front" 
-                                                     class="w-full h-full object-cover" />
+                                                     class="w-full h-full object-contain" />
                                             <?php else: ?>
                                                 <div class="flex h-full w-full items-center justify-center">
                                                     <span class="material-symbols-outlined text-[#888263]">image</span>
@@ -322,7 +322,7 @@ if ($activeCategory && isset($topByCategory[$activeCategory])) {
                                             <?php if (!empty($row['side_photo_path'])): ?>
                                                 <img src="<?= h(url('/media/client_photo.php?id=' . (int) $row['client_id'] . '&photo=day1_side')) ?>" 
                                                      alt="Day 1 side" 
-                                                     class="w-full h-full object-cover" />
+                                                     class="w-full h-full object-contain" />
                                             <?php else: ?>
                                                 <div class="flex h-full w-full items-center justify-center">
                                                     <span class="material-symbols-outlined text-[#888263]">image</span>
@@ -336,7 +336,7 @@ if ($activeCategory && isset($topByCategory[$activeCategory])) {
                                             <?php if (!empty($row['day10_side_photo_path'])): ?>
                                                 <img src="<?= h(url('/media/client_photo.php?id=' . (int) $row['client_id'] . '&photo=day10_side')) ?>" 
                                                      alt="Day 10 side" 
-                                                     class="w-full h-full object-cover" />
+                                                     class="w-full h-full object-contain" />
                                             <?php else: ?>
                                                 <div class="flex h-full w-full items-center justify-center">
                                                     <span class="material-symbols-outlined text-[#888263]">image</span>
@@ -412,7 +412,7 @@ if ($activeCategory && isset($topByCategory[$activeCategory])) {
                                             <?php if (!empty($photo['path'])): ?>
                                                 <img src="<?= h(url('/media/client_photo.php?id=' . (int) $row['client_id'] . '&photo=' . $photo['type'])) ?>" 
                                                      alt="<?= h($photo['label']) ?>" 
-                                                     class="w-full h-full object-cover" />
+                                                     class="w-full h-full object-contain" />
                                             <?php else: ?>
                                                 <div class="flex h-full w-full items-center justify-center">
                                                     <span class="material-symbols-outlined text-[#888263]">image</span>
