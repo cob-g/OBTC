@@ -161,8 +161,34 @@ require __DIR__ . '/../partials/nav.php';
             <div class="mt-2 text-3xl font-extrabold text-molten"><?= h((string) $challengeDayLabel) ?></div>
         </div>
         <div class="rounded-2xl border border-orange-100 bg-white p-5">
-            <div class="text-sm font-semibold text-zinc-600">Avg Weight Loss</div>
-            <div class="mt-2 text-3xl font-extrabold text-molten"><?= h((string) $avgWeightLossLabel) ?></div>
+            <div class="flex items-center justify-between">
+                <div class="text-sm font-semibold text-zinc-600">Current Week Status</div>
+                <svg class="h-5 w-5 text-molten" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <rect x="3" y="5" width="18" height="16" rx="2" fill="#FFF7ED" stroke="#FF6F00"/>
+                    <path d="M16 3v4M8 3v4M3 9h18" stroke="#FF6F00" stroke-linecap="round"/>
+                </svg>
+            </div>
+            <div class="mt-2 flex items-end gap-2">
+                <span class="text-3xl font-extrabold text-zinc-900">
+                    <?php
+                        $dayNum = 0;
+                        if (preg_match('/Day (\d+)/', $challengeDayLabel, $m)) {
+                            $dayNum = (int)$m[1];
+                        }
+                    ?>
+                    Day <?= $dayNum ?: '-' ?>
+                </span>
+                <span class="text-lg font-bold text-zinc-400">/10</span>
+            </div>
+            <div class="mt-2 h-2 w-full rounded-full bg-zinc-100">
+                <div class="h-2 rounded-full bg-molten transition-all duration-300" style="width: <?= ($dayNum > 10 ? 10 : $dayNum) * 10 ?>%"></div>
+            </div>
+            <div class="mt-2 text-sm font-semibold text-orange-600">
+                <?php
+                    $weekNum = $dayNum ? ceil($dayNum / 2.5) : 1;
+                ?>
+                Week <?= $weekNum ?> in progress
+            </div>
         </div>
     </div>
 

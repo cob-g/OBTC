@@ -39,9 +39,30 @@ require __DIR__ . '/../partials/layout_top.php';
         <div class="w-full max-w-md">
             <!-- Logo and Brand -->
             <div class="mb-12 flex items-center gap-3">
-                <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-molten">
-                    <svg class="h-5 w-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M3 3a1 1 0 000 2v8a2 2 0 002 2h2.586l-1.293 1.293a1 1 0 101.414 1.414L10 15.414l2.293 2.293a1 1 0 001.414-1.414L12.414 15H15a2 2 0 002-2V5a1 1 0 100-2H3zm11.707 4.707a1 1 0 00-1.414-1.414L10 9.586 8.707 8.293a1 1 0 00-1.414 0l-2 2a1 1 0 101.414 1.414L8 10.414l1.293 1.293a1 1 0 001.414 0l4-4z"/>
+                <div class="flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-br from-molten to-amber-500 shadow-lg">
+                    <svg class="h-8 w-8" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <linearGradient id="trophyBody" x1="0" y1="0" x2="48" y2="48" gradientUnits="userSpaceOnUse">
+                                <stop stop-color="#FFB300"/>
+                                <stop offset="1" stop-color="#FF6F00"/>
+                            </linearGradient>
+                            <radialGradient id="trophyShine" cx="24" cy="12" r="20" gradientUnits="userSpaceOnUse">
+                                <stop stop-color="#FFFDE4" stop-opacity="0.8"/>
+                                <stop offset="1" stop-color="#FFB300" stop-opacity="0"/>
+                            </radialGradient>
+                        </defs>
+                        <!-- Trophy cup -->
+                        <path d="M12 10c0 8 4 16 12 16s12-8 12-16" fill="url(#trophyBody)" stroke="#B45309" stroke-width="2"/>
+                        <!-- Trophy base -->
+                        <rect x="18" y="34" width="12" height="6" rx="2" fill="#B45309"/>
+                        <rect x="16" y="40" width="16" height="4" rx="2" fill="#92400E"/>
+                        <!-- Handles -->
+                        <path d="M12 14c-4 0-6 4-6 8s2 8 6 8" stroke="#B45309" stroke-width="2" fill="none"/>
+                        <path d="M36 14c4 0 6 4 6 8s-2 8-6 8" stroke="#B45309" stroke-width="2" fill="none"/>
+                        <!-- Shine -->
+                        <ellipse cx="24" cy="14" rx="8" ry="4" fill="url(#trophyShine)"/>
+                        <!-- Star in the center -->
+                        <polygon points="24,17 25.9,22.1 31.4,22.1 27,25.4 28.9,30.5 24,27.2 19.1,30.5 21,25.4 16.6,22.1 22.1,22.1" fill="#FFFDE4" stroke="#FFB300" stroke-width="1"/>
                     </svg>
                 </div>
                 <h1 class="text-lg font-bold tracking-tight text-zinc-900">10 Days Weekly Challenge</h1>
