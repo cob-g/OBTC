@@ -1,1 +1,9 @@
-Require all denied
+# Allow image files
+<FilesMatch "\.(jpg|jpeg|png|gif|webp)$">
+    Require all granted
+</FilesMatch>
+
+# Deny access to PHP files for security
+<FilesMatch "\.php$">
+    Require all denied
+</FilesMatch>
