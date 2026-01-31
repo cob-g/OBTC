@@ -527,7 +527,7 @@ require __DIR__ . '/../partials/nav.php';
                     <input type="file" name="day10_side" accept="image/jpeg,image/png" class="mt-2 block w-full rounded-xl border border-orange-100 bg-white px-3 py-2 text-sm text-zinc-700" <?= !$hasDay10Checkin ? 'disabled' : '' ?> />
                 </div>
 
-                <div class="sm:text-right">
+                <div class="">
                     <button type="submit" class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-molten to-pumpkin px-6 py-3 text-sm font-bold text-white shadow-md shadow-orange-200/50 transition hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed sm:w-auto" <?= !$hasDay10Checkin ? 'disabled' : '' ?>>
                         <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
