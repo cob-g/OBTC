@@ -16,6 +16,9 @@ if ($role === 'coach') {
 }
 
 if ($role === 'admin') {
+    // Get current page for active state
+    $current_page = $_SERVER['REQUEST_URI'];
+    
     $nav = [
         ['Overview', url('/admin/overview.php'), '<svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>'],
         ['Challenges', url('/admin/challenges.php'), '<svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>'],
@@ -70,10 +73,13 @@ if ($role === 'admin') {
                 <!-- Navigation -->
                 <nav class="flex-1 px-3 py-4 overflow-y-auto">
                     <div class="text-[10px] font-bold uppercase tracking-wider text-slate-500 px-4 mb-2">Main Menu</div>
-                    <?php foreach ($nav as $item): ?>
-                        <a href="<?= h($item[1]) ?>" class="mb-1 flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-300 hover:bg-slate-800 hover:text-white transition-colors">
+                    <?php foreach ($nav as $item): 
+                        $is_active = strpos($current_page, $item[1]) !== false;
+                        $active_classes = $is_active ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/50' : 'text-slate-300 hover:bg-slate-800 hover:text-white';
+                    ?>
+                        <a href="<?= h($item[1]) ?>" class="mb-1 flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium <?= $active_classes ?> transition-colors">
                             <?php if (isset($item[2])): ?>
-                                <span class="text-indigo-400"><?= $item[2] ?></span>
+                                <span class="<?= $is_active ? 'text-indigo-200' : 'text-indigo-400' ?>"><?= $item[2] ?></span>
                             <?php endif; ?>
                             <?= h($item[0]) ?>
                         </a>
@@ -159,10 +165,13 @@ if ($role === 'admin') {
                             <!-- Navigation -->
                             <nav class="flex-1 overflow-y-auto px-3 py-4">
                                 <div class="text-[10px] font-bold uppercase tracking-wider text-slate-500 px-4 mb-2">Menu</div>
-                                <?php foreach ($nav as $item): ?>
-                                    <a href="<?= h($item[1]) ?>" class="mb-1 flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-slate-300 hover:bg-slate-800 hover:text-white transition-colors">
+                                <?php foreach ($nav as $item): 
+                                    $is_active = strpos($current_page, $item[1]) !== false;
+                                    $active_classes = $is_active ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/50' : 'text-slate-300 hover:bg-slate-800 hover:text-white';
+                                ?>
+                                    <a href="<?= h($item[1]) ?>" class="mb-1 flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium <?= $active_classes ?> transition-colors">
                                         <?php if (isset($item[2])): ?>
-                                            <span class="text-indigo-400"><?= $item[2] ?></span>
+                                            <span class="<?= $is_active ? 'text-indigo-200' : 'text-indigo-400' ?>"><?= $item[2] ?></span>
                                         <?php endif; ?>
                                         <?= h($item[0]) ?>
                                     </a>
