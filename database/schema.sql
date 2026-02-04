@@ -29,6 +29,7 @@ CREATE TABLE IF NOT EXISTS clients (
   day10_front_photo_path VARCHAR(255) NULL,
   day10_side_photo_path VARCHAR(255) NULL,
   challenge_start_date DATE NULL,
+  excluded_from_leaderboard TINYINT(1) NOT NULL DEFAULT 0,
   registered_at DATETIME NOT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

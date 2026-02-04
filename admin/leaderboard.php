@@ -20,11 +20,15 @@ function truncate_decimals($value, $decimals)
 }
 
 $hasFullName = db_has_column('clients', 'full_name');
+$hasExcludedColumn = db_has_column('clients', 'excluded_from_leaderboard');
 
 $rows = [];
 try {
     $selectClient = $hasFullName ? 'c.full_name' : "'' AS full_name";
-    $sql = 'SELECT c.id, ' . $selectClient . ', c.start_weight_lbs, c.bmi_category, c.front_photo_path, c.side_photo_path, c.day10_front_photo_path, c.day10_side_photo_path, u.name AS coach_name, u.email AS coach_email, latest.latest_weight, latest.days_completed, latest.has_day10 '
+    $selectExcluded = $hasExcludedColumn ? 'c.excluded_from_leaderboard' : '0 AS excluded_from_leaderboard';
+    $whereClause = $hasExcludedColumn ? 'WHERE c.excluded_from_leaderboard = 0' : '';
+    
+    $sql = 'SELECT c.id, ' . $selectClient . ', ' . $selectExcluded . ', c.start_weight_lbs, c.bmi_category, c.front_photo_path, c.side_photo_path, c.day10_front_photo_path, c.day10_side_photo_path, u.name AS coach_name, u.email AS coach_email, latest.latest_weight, latest.days_completed, latest.has_day10 '
         . 'FROM clients c '
         . 'INNER JOIN users u ON u.id = c.coach_user_id '
         . 'INNER JOIN ( '
@@ -33,6 +37,7 @@ try {
         . '   FROM client_checkins '
         . '   GROUP BY client_id '
         . ') latest ON latest.client_id = c.id '
+        . $whereClause . ' '
         . 'ORDER BY latest.has_day10 DESC, latest.days_completed DESC, c.id DESC';
 
     $stmt = db()->query($sql);
@@ -70,6 +75,7 @@ try {
             'end_weight' => $end,
             'loss_lbs' => $lossLbs,
             'loss_pct' => $lossPct,
+            'excluded_from_leaderboard' => (int) ($r['excluded_from_leaderboard'] ?? 0),
         ];
     }
 } catch (Throwable $e) {
@@ -417,10 +423,14 @@ if ($activeCategory && isset($topByCategory[$activeCategory])) {
                                         <span class="text-xs sm:text-sm font-medium text-slate-500">Days Completed</span>
                                         <span class="text-sm sm:text-base font-bold text-indigo_bloom"><?= h($row['days_completed']) ?>/10</span>
                                     </div>
-                                    <a href="<?= h(url('/coach/client_details.php?id=' . (int) $row['client_id'])) ?>" class="mt-2 sm:mt-4 w-full py-2.5 sm:py-3 bg-slate-900 text-white text-xs font-bold rounded-lg hover:bg-slate-800 transition-colors text-center flex items-center justify-center gap-2">
+                                    <a href="<?= h(url('/coach/client_details.php?id=' . (int) $row['client_id'])) ?>" class="mt-2 w-full py-2.5 sm:py-3 bg-slate-900 text-white text-xs font-bold rounded-lg hover:bg-slate-800 transition-colors text-center flex items-center justify-center gap-2">
                                         <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
                                         VIEW FULL PROFILE
                                     </a>
+                                    <button onclick="excludeClient(<?= (int) $row['client_id'] ?>, '<?= h($row['client_name']) ?>')" class="mt-2 w-full py-2 border-2 border-red-200 text-red-600 text-xs font-bold rounded-lg hover:bg-red-50 hover:border-red-300 transition-colors text-center flex items-center justify-center gap-2" title="Remove from Top 10 leaderboard">
+                                        <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
+                                        EXCLUDE FROM TOP 10
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -506,8 +516,10 @@ if ($activeCategory && isset($topByCategory[$activeCategory])) {
                                     <a href="<?= h(url('/coach/client_details.php?id=' . (int) $row['client_id'])) ?>" class="mt-2 w-full py-2 border border-slate-200 text-xs font-bold rounded-lg hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo_bloom transition-all text-center flex items-center justify-center gap-1.5">
                                         <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
                                         VIEW DETAILS
-                                    </a>
-                                </div>
+                                    </a>                                    <button onclick="excludeClient(<?= (int) $row['client_id'] ?>, '<?= h($row['client_name']) ?>')" class="mt-1 w-full py-2 border border-red-200 text-red-600 text-[11px] font-bold rounded-lg hover:bg-red-50 hover:border-red-300 transition-all text-center flex items-center justify-center gap-1" title="Remove from Top 10 leaderboard">
+                                        <svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
+                                        EXCLUDE
+                                    </button>                                </div>
                             </div>
                         </div>
                     <?php endif; ?>
@@ -530,5 +542,35 @@ if ($activeCategory && isset($topByCategory[$activeCategory])) {
         <?php endif; ?>
     </div>
 </main>
+
+<script>
+function excludeClient(clientId, clientName) {
+    if (!confirm(`Are you sure you want to exclude "${clientName}" from the Top 10 leaderboard?\n\nThis won't delete their data - they just won't appear in the leaderboard rankings.`)) {
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('client_id', clientId);
+    formData.append('action', 'exclude');
+    
+    fetch('<?= h(url('/admin/leaderboard_exclude.php')) ?>', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message + '\n\nThe page will now reload.');
+            window.location.reload();
+        } else {
+            alert('Error: ' + (data.message || 'Failed to exclude client'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while excluding the client.');
+    });
+}
+</script>
 
 <?php require __DIR__ . '/../partials/layout_bottom.php'; ?>
